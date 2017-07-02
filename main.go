@@ -455,11 +455,16 @@ func startWebServer(basedir string) {
 	exec.Command("nordvpn-server", "-database", OutDatabase, "-file", AuthFile, "-config", OutConfig, "-pid", PIDFile).Run()
 }
 
+func stopServer() {
+	http.Get("http://localhost:8084/exit")
+}
+
 func main() {
 	var config string
 	var confStruct Config
 
 	flag.StringVar(&config, "config", "/etc/GoNordVPN.conf", "Configuration file in json format")
+	kill := flag.Bool("kill", false, "Kill server process")
 	create := flag.Bool("make-config", false, "Creates configuration file json")
 	useStdin := flag.Bool("stdin", false, "Use stdin to configure file")
 	flag.StringVar(&confStruct.OutHTML, "out-html", "", "File output map")
@@ -468,6 +473,11 @@ func main() {
 	flag.StringVar(&confStruct.Basedir, "basedir", "", "Working directory")
 
 	flag.Parse()
+
+	if *kill {
+		stopServer()
+		os.Exit(0)
+	}
 
 	// Create configuration file and exit
 	if *create {
@@ -525,7 +535,7 @@ func main() {
 	var fullscreen = false
 	var transparent = true
 	var barStyle = "hidden-inset"
-	var frame = false
+	var frame = true
 
 	// Configuring window
 	var w *astilectron.Window

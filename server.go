@@ -104,6 +104,15 @@ func startWebServer() {
 		}
 	})
 
+	http.HandleFunc("/exit", func(w http.ResponseWriter, r *http.Request) {
+		stopOpenVPN()
+		w.Write([]byte("OpenVPN stopped"))
+
+		os.Remove(PIDFile)
+		os.Remove(fileUser)
+		os.Exit(0)
+	})
+
 	go http.ListenAndServe("127.0.0.1:8084", nil)
 
 	<-signals
@@ -123,14 +132,8 @@ func main() {
 	flag.StringVar(&fileUser, "file", "", "File with user and password")
 	flag.StringVar(&OutConfig, "config", "", "OpenVPN directory with configuration files")
 	flag.StringVar(&PIDFile, "pid", "", "PID file for server")
-	kill := flag.Bool("kill", false, "Kill OpenVPN activity")
 
 	flag.Parse()
-
-	if *kill {
-		stopOpenVPN()
-		os.Exit(0)
-	}
 
 	if _, err := os.Stat(PIDFile); err == nil {
 		println("Server is already running")
