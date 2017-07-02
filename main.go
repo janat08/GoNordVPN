@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	Username          = "YOUR_NORDVPN_USERNAME"
-	Password          = "YOUR_NORDVPN_PASSWORD"
+	Username          = "YOUR_NORDVPN_USER"
+	Password          = "YOUR_NORDVPN_PASS"
 	APIKey            = "YOUR_GOOGLE_API_KEY"
 	OutHTML           = "map.html"
 	OutConfig         = "/configurations"
@@ -86,6 +86,8 @@ var (
       http.send();                                     
     }
 
+		var lastMark;
+
 		function addMark(map, location, title, ip) {
       var marker = new google.maps.Marker({
         position: location,
@@ -95,6 +97,9 @@ var (
       });
 
       marker.addListener('click', function() {
+				if ( lastMark != null )
+					lastMark.setIcon('http://maps.google.com/mapfiles/ms/icons/red-dot.png')
+				lastMark = marker;
 				marker.setIcon('http://maps.google.com/mapfiles/ms/icons/blue-dot.png')
         httpGet(marker.ip);
       });
@@ -290,31 +295,6 @@ func configureDatabase(basedir string) (err error) {
 	return
 }
 
-func selectMap(ip string) (string, error) {
-	db, err := sql.Open("sqlite3", OutDatabase)
-	if err != nil {
-		return "", err
-	}
-	defer db.Close()
-
-	if err = db.Ping(); err != nil {
-		return "", err
-	}
-
-	var file string
-
-	rows, err := db.Query("SELECT file FROM vpnlist WHERE ip = '" + ip + "'")
-	if err != nil {
-		return "", err
-	}
-
-	for rows.Next() {
-		rows.Scan(&file)
-	}
-
-	return file, nil
-}
-
 func createMap() error {
 	res, err := http.Get("http://api.nordvpn.com/server")
 	if err != nil {
@@ -368,48 +348,10 @@ func createMap() error {
 	return nil
 }
 
-func execOpenVPN(file string) error {
-	err := ioutil.WriteFile(os.TempDir()+"/auth.txt", []byte(Username+"\n"+Password+"\n"), 0666)
-	if err != nil {
-		return err
-	}
-
-	exec.Command("killall", "openvpn").Run()
-
-	cmd := exec.Command("openvpn", "--config", file, "--auth-user-pass", os.TempDir()+"/auth.txt")
-
-	cmd.Stdout = os.Stdout
-	cmd.Stdin = os.Stdin
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	os.Remove(os.TempDir() + "/auth.txt")
-
-	return nil
-}
-
 func startWebServer(basedir string) {
-	http.HandleFunc("/nord", func(w http.ResponseWriter, r *http.Request) {
-		ip := r.FormValue("ip")
+	ioutil.WriteFile(os.TempDir()+string(os.PathSeparator)+"authNord.txt", []byte(Username+"\n"+Password+"\n"), 0600)
 
-		file, err := selectMap(ip)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println("Using '" + file + "' configuartion file")
-
-		err = execOpenVPN(basedir + string(os.PathSeparator) +
-			OutConfig + string(os.PathSeparator) + file)
-		if err != nil {
-			panic(err)
-		}
-	})
-	http.ListenAndServe("127.0.0.1:8084", nil)
+	exec.Command("./server", "-database", OutDatabase, "-v", "-file", os.TempDir()+string(os.PathSeparator)+"authNord.txt", "-config", OutConfig).Run()
 }
 
 func main() {
@@ -503,6 +445,8 @@ func main() {
 
 	fmt.Println("Starting web server...")
 	go startWebServer(basedir)
+
+	handler.HandleSignals()
 
 	handler.Wait()
 }

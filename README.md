@@ -39,7 +39,7 @@ In code, you should change the fields with your own data.
 `APIKey = "YOUR_GOOGLE_API_KEY"`
 
 5.- Compiling:
-- `go build main.go`
+- `go build main.go && go build server.go`
 
 6.- Execute:
 
