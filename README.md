@@ -28,21 +28,12 @@ And get your Javascript API Key
 
 `go get -u github.com/mattn/go-sqlite3`
 
-4.- Configure:
+4.- Configure and compile: 
 
-In code, you should change the fields with your own data.
+`sudo -E ./install.sh`
 
-`Username = "YOUR_NORDVPN_USERNAME"`
+5.- Execute:
 
-`Password = "YOUR_NORDVPN_PASSWORD"`
+`sudo nordvpn-client`
 
-`APIKey = "YOUR_GOOGLE_API_KEY"`
-
-5.- Compiling:
-- `go build main.go && go build server.go`
-
-6.- Execute:
-
-`sudo ./main`
-
-The first executing will be slower. Be patient!
+The first execution will be slower. Be patient!

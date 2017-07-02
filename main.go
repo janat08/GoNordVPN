@@ -5,8 +5,10 @@ import (
 	"bufio"
 	"database/sql"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/asticode/go-astilectron"
+	"github.com/howeyc/gopass"
 	_ "github.com/mattn/go-sqlite3"
 	"io/ioutil"
 	"net/http"
@@ -19,12 +21,6 @@ import (
 )
 
 const (
-	Username          = "YOUR_NORDVPN_USER"
-	Password          = "YOUR_NORDVPN_PASS"
-	APIKey            = "YOUR_GOOGLE_API_KEY"
-	OutHTML           = "map.html"
-	OutConfig         = "/configurations"
-	OutDatabase       = "./NordVPN.db"
 	DatabaseStructure = `
 		CREATE TABLE vpnlist (
 			file VARCHAR(128) PRIMARY KEY,
@@ -62,23 +58,10 @@ const (
   <body>
     <div id="map">
 		</div>
-
 		<div id="over_map">
-		<img src="logo.png" style="position: fixed; right: 1em; margin: 0 0 10px 10px;width:auto;height:auto;">
+			<img src="logo.png" style="position: fixed; right: 1em; margin: 0 0 10px 10px;width:auto;height:auto;">
 		</div>
-
     <script>`
-	MapFooter = `
-      }
-    </script>
-    <script async defer
-    	src="https://maps.googleapis.com/maps/api/js?key=` + APIKey + `&callback=initMap">
-    </script>
-  </body>
-</html>`
-)
-
-var (
 	InitMark = `function httpGet(ip) {
       var http = new XMLHttpRequest();
 
@@ -86,24 +69,55 @@ var (
       http.send();                                     
     }
 
+		var contains = function(needle) {
+			var findNaN = needle !== needle;
+			var indexOf;
+
+			if(!findNaN && typeof Array.prototype.indexOf === 'function') {
+				indexOf = Array.prototype.indexOf;
+			} else {
+				indexOf = function(needle) {
+        	var i = -1, index = -1;
+
+            for(i = 0; i < this.length; i++) {
+                var item = this[i];
+
+                if((findNaN && item !== item) || item === needle) {
+                    index = i;
+                    break;
+                }
+            }
+
+            return index;
+        	};
+    	}
+
+    	return indexOf.call(this, needle) > -1;
+		};
+
+		var marks = [{lat:"", lng: ""}];
 		var lastMark;
 
 		function addMark(map, location, title, ip) {
-      var marker = new google.maps.Marker({
-        position: location,
-        map: map,
-        title: title,
-        ip: ip
-      });
+			if ( !marks.includes(location) ) {
+	      var marker = new google.maps.Marker({
+  	      position: location,
+    	    map: map,
+      	  title: title,
+        	ip: ip
+	      });
 
-      marker.addListener('click', function() {
-				if ( lastMark != null )
-					lastMark.setIcon('http://maps.google.com/mapfiles/ms/icons/red-dot.png')
-				lastMark = marker;
-				marker.setIcon('http://maps.google.com/mapfiles/ms/icons/blue-dot.png')
-        httpGet(marker.ip);
-      });
-    }
+  	    marker.addListener('click', function() {
+					if ( lastMark != null )
+						lastMark.setIcon('http://maps.google.com/mapfiles/ms/icons/red-dot.png')
+					lastMark = marker;
+					marker.setIcon('http://maps.google.com/mapfiles/ms/icons/blue-dot.png')
+  	      httpGet(marker.ip);
+    	  });
+
+				marks.push(location);
+    	}
+		}
 
 		function initMap() {
       var myLatLng = {lat: {{.Latitude}}, lng: {{.Longitude}} };
@@ -120,10 +134,39 @@ var (
 				ip: '{{.IP}}'
   	  });
 			`
-
 	AddMark = `
 	addMark(map, {lat: {{.Latitude}}, lng: {{.Longitude}} }, '{{.Name}}', '{{.IP}}');`
 )
+
+var (
+	Username    string
+	Password    string
+	APIKey      string
+	OutHTML     string
+	OutConfig   string
+	OutDatabase string
+	Basedir     string
+	PIDFile     = os.TempDir() + string(os.PathSeparator) + "nordvpn.pid"
+	AuthFile    = os.TempDir() + string(os.PathSeparator) + "authNord.txt"
+	MapFooter   = `
+      }
+    </script>
+    <script async defer
+    	src="https://maps.googleapis.com/maps/api/js?key=` + APIKey + `&callback=initMap">
+    </script>
+  </body>
+</html>`
+)
+
+type Config struct {
+	Username    string
+	Password    string
+	APIKey      string
+	OutHTML     string
+	OutConfig   string
+	OutDatabase string
+	Basedir     string
+}
 
 type Categories struct {
 	Name string `json:"name"`
@@ -317,7 +360,7 @@ func createMap() error {
 		os.Remove(OutHTML)
 	}
 
-	file, err := os.OpenFile(OutHTML, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
+	file, err := os.OpenFile(OutHTML, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return err
 	}
@@ -348,29 +391,122 @@ func createMap() error {
 	return nil
 }
 
-func startWebServer(basedir string) {
-	ioutil.WriteFile(os.TempDir()+string(os.PathSeparator)+"authNord.txt", []byte(Username+"\n"+Password+"\n"), 0600)
+func createConfig(stdin bool, configuration Config) {
+	var err error
 
-	exec.Command("./server", "-database", OutDatabase, "-v", "-file", os.TempDir()+string(os.PathSeparator)+"authNord.txt", "-config", OutConfig).Run()
+	if stdin {
+		in := bufio.NewReader(os.Stdin)
+
+		fmt.Print("Username: ")
+		username, _, err := in.ReadLine()
+		if err != nil {
+			panic(err)
+		}
+		configuration.Username = string(username)
+
+		fmt.Print("Password: ")
+		pass, err := gopass.GetPasswdMasked()
+		if err != nil {
+			panic(err)
+		}
+		configuration.Password = string(pass)
+
+		fmt.Print("API Key: ")
+		api, _, err := in.ReadLine()
+		if err != nil {
+			panic(err)
+		}
+		configuration.APIKey = string(api)
+	}
+
+	conf, err := json.Marshal(configuration)
+	if err != nil {
+		panic(err)
+	}
+
+	ioutil.WriteFile("GoNordVPN.conf", conf, 0666)
+}
+
+func getConfig(file string) {
+	var configuration Config
+
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(data, &configuration)
+	if err != nil {
+		panic(err)
+	}
+
+	Username = configuration.Username
+	Password = configuration.Password
+	APIKey = configuration.APIKey
+	OutHTML = configuration.OutHTML
+	OutConfig = configuration.OutConfig
+	OutDatabase = configuration.OutDatabase
+	Basedir = configuration.Basedir
+}
+
+func startWebServer(basedir string) {
+	ioutil.WriteFile(AuthFile, []byte(Username+"\n"+Password+"\n"), 0600)
+
+	exec.Command("nordvpn-server", "-database", OutDatabase, "-file", AuthFile, "-config", OutConfig, "-pid", PIDFile).Run()
 }
 
 func main() {
-	if os.Getuid() != 0 {
-		fmt.Println("Execute this program as root")
-		os.Exit(1)
+	var config string
+	var confStruct Config
+
+	flag.StringVar(&config, "config", "/etc/GoNordVPN.conf", "Configuration file in json format")
+	create := flag.Bool("make-config", false, "Creates configuration file json")
+	useStdin := flag.Bool("stdin", false, "Use stdin to configure file")
+	flag.StringVar(&confStruct.OutHTML, "out-html", "", "File output map")
+	flag.StringVar(&confStruct.OutConfig, "out-config", "", "Folder with OpenVPN configuration files")
+	flag.StringVar(&confStruct.OutDatabase, "out-db", "", "Database with specific data of configuration files")
+	flag.StringVar(&confStruct.Basedir, "basedir", "", "Working directory")
+
+	flag.Parse()
+
+	// Create configuration file and exit
+	if *create {
+		createConfig(*useStdin, confStruct)
+		os.Exit(0)
 	}
 
-	basedir, err := os.Getwd()
-	if err != nil {
-		panic(err)
+	// Check if configuration file exists
+	if _, err := os.Stat(config); err != nil {
+		fmt.Println("You should provide a configuration file")
+		os.Exit(1)
+	} else {
+		getConfig(config)
+	}
+
+	var initServer bool = false
+
+	if _, err := os.Stat(PIDFile); err != nil {
+		initServer = true
+		if os.Getuid() != 0 {
+			fmt.Println("Execute this program as root to start server")
+			os.Exit(1)
+		}
+	}
+
+	if len(Basedir) == 0 {
+		Basedir, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Using:", Basedir)
 	}
 
 	// Configure options for launcher
 	handler, err := astilectron.New(astilectron.Options{
 		AppName:            "GoNordVPN",
-		AppIconDefaultPath: basedir + "/logo.png",
+		AppIconDefaultPath: Basedir + "/logo.png",
 		AppIconDarwinPath:  "<your .icns icon>",
-		BaseDirectoryPath:  basedir,
+		BaseDirectoryPath:  Basedir,
 	})
 	if err != nil {
 		panic(err)
@@ -416,20 +552,20 @@ func main() {
 	}
 
 	// check the output directory with configuration files
-	if _, err = os.Stat(basedir + OutConfig); err != nil {
-		if err = os.Mkdir(basedir+OutConfig, 0777); err != nil {
+	if _, err = os.Stat(OutConfig); err != nil {
+		if err = os.Mkdir(OutConfig, 0777); err != nil {
 			panic(err)
 		}
 
 		fmt.Println("Downloading zip file with configurations...")
-		err = downloadFiles(basedir + OutConfig)
+		err = downloadFiles(OutConfig)
 		if err != nil {
 			panic(err)
 		}
 
 		fmt.Println("Unzipping files...")
-		err = unzipFile(basedir+OutConfig,
-			basedir+OutConfig+string(os.PathSeparator)+"files.zip")
+		err = unzipFile(OutConfig,
+			OutConfig+string(os.PathSeparator)+"files.zip")
 		if err != nil {
 			panic(err)
 		}
@@ -437,14 +573,16 @@ func main() {
 
 	if _, err = os.Stat(OutDatabase); err != nil {
 		fmt.Println("Creating database configuration...")
-		err = configureDatabase(basedir + OutConfig)
+		err = configureDatabase(OutConfig)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	fmt.Println("Starting web server...")
-	go startWebServer(basedir)
+	if initServer {
+		fmt.Println("Starting web server...")
+		go startWebServer(Basedir)
+	}
 
 	handler.HandleSignals()
 

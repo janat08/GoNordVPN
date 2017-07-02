@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	PIDFile     = os.TempDir() + string(os.PathSeparator) + "nordvpn.pid"
-	verbose     bool
+	PIDFile     string
 	OutConfig   string
 	OutDatabase string
 	fileUser    string
@@ -59,12 +58,6 @@ func execOpenVPN(file string) error {
 
 	cmd := exec.Command("openvpn", "--config", file, "--auth-user-pass", fileUser)
 
-	if verbose {
-		cmd.Stdout = os.Stdout
-		cmd.Stdin = os.Stdin
-		cmd.Stderr = os.Stderr
-	}
-
 	err := cmd.Run()
 	if err != nil {
 		return err
@@ -79,9 +72,13 @@ func stopOpenVPN() {
 	exec.Command("killall", "openvpn").Run()
 }
 
-func startWebServer(basedir string) {
+func startWebServer() {
 	if len(OutConfig) == 0 {
 		return
+	}
+
+	if len(PIDFile) == 0 {
+		PIDFile = os.TempDir() + string(os.PathSeparator) + "nordvpn.pid"
 	}
 
 	ioutil.WriteFile(PIDFile, []byte(strconv.Itoa(os.Getpid())), 0666)
@@ -100,8 +97,7 @@ func startWebServer(basedir string) {
 				panic(err)
 			}
 
-			err = execOpenVPN(basedir + string(os.PathSeparator) +
-				OutConfig + string(os.PathSeparator) + file)
+			err = execOpenVPN(OutConfig + string(os.PathSeparator) + file)
 			if err != nil {
 				panic(err)
 			}
@@ -112,6 +108,7 @@ func startWebServer(basedir string) {
 
 	<-signals
 	os.Remove(PIDFile)
+	os.Remove(fileUser)
 
 	stopOpenVPN()
 }
@@ -123,9 +120,9 @@ func main() {
 	}
 
 	flag.StringVar(&OutDatabase, "database", "", "Database location")
-	flag.BoolVar(&verbose, "v", false, "Verbose mode")
 	flag.StringVar(&fileUser, "file", "", "File with user and password")
-	flag.StringVar(&OutConfig, "config", "", "OpenVPN configuration file")
+	flag.StringVar(&OutConfig, "config", "", "OpenVPN directory with configuration files")
+	flag.StringVar(&PIDFile, "pid", "", "PID file for server")
 	kill := flag.Bool("kill", false, "Kill OpenVPN activity")
 
 	flag.Parse()
@@ -140,10 +137,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	basedir, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-
-	startWebServer(basedir)
+	startWebServer()
 }
