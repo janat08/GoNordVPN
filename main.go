@@ -41,17 +41,6 @@ const (
     <meta charset="utf-8">
     <title>NordVPN Servers</title>
     <style>
-			.top-titlebar {
-  			position: absolute;
-			  left: 0px;
-			  top: 0px;
-			  width: 100%;
-			  height: 32px;
-			  background-color: #7a7c7c;
-			  -webkit-user-select: none;
-			  -webkit-app-region: drag;
-			}
-
       #map {
         height: 100%;
       }
@@ -61,10 +50,23 @@ const (
         margin: 0;
         padding: 0;
       }
+
+			#over_map {
+				position: absolute;
+				top: 10px;
+				left: 10px;
+				z-index: 99;
+			}
     </style>
   </head>
   <body>
-    <div id="map"></div>
+    <div id="map">
+		</div>
+
+		<div id="over_map">
+		<img src="logo.png" style="position: fixed; right: 1em; margin: 0 0 10px 10px;width:auto;height:auto;">
+		</div>
+
     <script>`
 	MapFooter = `
       }
@@ -93,6 +95,7 @@ var (
       });
 
       marker.addListener('click', function() {
+				marker.setIcon('http://maps.google.com/mapfiles/ms/icons/blue-dot.png')
         httpGet(marker.ip);
       });
     }
@@ -441,14 +444,14 @@ func main() {
 		panic(err)
 	}
 
-	var fullscreen = true
+	var fullscreen = false
 	var transparent = true
 	var barStyle = "hidden-inset"
 	var frame = false
 
 	// Configuring window
 	var w *astilectron.Window
-	if w, err = handler.NewWindow("./map.html", &astilectron.WindowOptions{
+	if w, err = handler.NewWindow(OutHTML, &astilectron.WindowOptions{
 		Center:        astilectron.PtrBool(true),
 		Height:        astilectron.PtrInt(600),
 		Width:         astilectron.PtrInt(600),
