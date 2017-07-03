@@ -22,18 +22,14 @@ You should go to: `https://console.developers.google.com`
 
 And get your Javascript API Key
 
-3.- Install Golang libraries:
-
-`go get -u github.com/asticode/go-astilectron`
-
-`go get -u github.com/mattn/go-sqlite3`
-
-4.- Configure and compile: 
+3.- Configure and compile: 
 
 `sudo -E ./install.sh`
 
-5.- Execute:
+4.- Execute:
 
-`sudo nordvpn-client`
+`sudo nordvpn-client -start && nordvpn-client`
+
+(Only requires root to start nordvpn-server)
 
 The first execution will be slower. Be patient!
