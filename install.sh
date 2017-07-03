@@ -5,6 +5,10 @@ if [ `whoami` != 'root' ]; then
   exit;
 fi
 
+go get -u github.com/howeyc/gopass
+go get -u github.com/asticode/go-astilectron
+go get -u github.com/mattn/go-sqlite3
+
 go build main.go && go build server.go
 
 mkdir /usr/share/GoNordVPN
