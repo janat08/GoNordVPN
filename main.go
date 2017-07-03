@@ -459,6 +459,10 @@ func startWebServer(basedir string) {
 }
 
 func stopServer() {
+	http.Get("http://localhost:8084/stop")
+}
+
+func killServer() {
 	http.Get("http://localhost:8084/exit")
 }
 
@@ -467,6 +471,7 @@ func main() {
 	var confStruct Config
 
 	kill := flag.Bool("kill", false, "Kill server process")
+	stop := flag.Bool("stop", false, "Stop OpenVPN process")
 	start := flag.Bool("start", false, "Start server process (requires root)")
 	create := flag.Bool("make-config", false, "Creates configuration file json")
 	useStdin := flag.Bool("stdin", false, "Use stdin to configure file")
@@ -479,6 +484,11 @@ func main() {
 	flag.Parse()
 
 	if *kill {
+		killServer()
+		os.Exit(0)
+	}
+
+	if *stop {
 		stopServer()
 		os.Exit(0)
 	}
@@ -583,18 +593,20 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Println("Downloading zip file with configurations...")
+		fmt.Println("[*] Downloading zip file with configurations...")
 		err = downloadFiles(OutConfig)
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println("[*] Downloaded")
 
-		fmt.Println("Unzipping files...")
+		fmt.Println("[*] Unzipping files...")
 		err = unzipFile(OutConfig,
 			OutConfig+string(os.PathSeparator)+"files.zip")
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println("[*] Unzipped")
 	}
 
 	if _, err = os.Stat(OutDatabase); err != nil {
@@ -603,6 +615,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		fmt.Pritln("[*] Database created")
 	}
 
 	if initServer {

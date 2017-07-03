@@ -102,9 +102,12 @@ func startWebServer() {
 		}
 	})
 
+	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {
+		stopOpenVPN()
+	})
+
 	http.HandleFunc("/exit", func(w http.ResponseWriter, r *http.Request) {
 		stopOpenVPN()
-		w.Write([]byte("OpenVPN stopped"))
 
 		os.Remove(PIDFile)
 		os.Remove(fileUser)
