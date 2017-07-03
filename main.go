@@ -95,11 +95,11 @@ const (
     	return indexOf.call(this, needle) > -1;
 		};
 
-		var marks = [{lat:"", lng: ""}];
+		var marks = [""];
 		var lastMark;
 
 		function addMark(map, location, title, ip) {
-			if ( !marks.includes(location) ) {
+			if ( !marks.includes(title) ) {
 	      var marker = new google.maps.Marker({
   	      position: location,
     	    map: map,
@@ -115,7 +115,7 @@ const (
   	      httpGet(marker.ip);
     	  });
 
-				marks.push(location);
+				marks.push(title);
     	}
 		}
 
@@ -369,6 +369,9 @@ func createMap() error {
 	file.Write([]byte(MapBody))
 
 	for i := range data {
+		s := strings.Split(data[i].Name, " ")
+
+		data[i].Name = s[0]
 		script := DataScript{
 			data[i].Loc.Lat,
 			data[i].Loc.Long,
@@ -452,7 +455,7 @@ func getConfig(file string) {
 func startWebServer(basedir string) {
 	ioutil.WriteFile(AuthFile, []byte(Username+"\n"+Password+"\n"), 0600)
 
-	exec.Command("nordvpn-server", "-database", OutDatabase, "-file", AuthFile, "-config", OutConfig, "-pid", PIDFile).Run()
+	exec.Command("nordvpn-server", "-database", OutDatabase, "-file", AuthFile, "-config", OutConfig, "-pid", PIDFile).Start()
 }
 
 func stopServer() {
@@ -463,14 +466,15 @@ func main() {
 	var config string
 	var confStruct Config
 
-	flag.StringVar(&config, "config", "/etc/GoNordVPN.conf", "Configuration file in json format")
 	kill := flag.Bool("kill", false, "Kill server process")
+	start := flag.Bool("start", false, "Start server process (requires root)")
 	create := flag.Bool("make-config", false, "Creates configuration file json")
 	useStdin := flag.Bool("stdin", false, "Use stdin to configure file")
 	flag.StringVar(&confStruct.OutHTML, "out-html", "", "File output map")
+	flag.StringVar(&confStruct.Basedir, "basedir", "", "Working directory")
+	flag.StringVar(&config, "config", "/etc/GoNordVPN.conf", "Configuration file in json format")
 	flag.StringVar(&confStruct.OutConfig, "out-config", "", "Folder with OpenVPN configuration files")
 	flag.StringVar(&confStruct.OutDatabase, "out-db", "", "Database with specific data of configuration files")
-	flag.StringVar(&confStruct.Basedir, "basedir", "", "Working directory")
 
 	flag.Parse()
 
@@ -489,16 +493,28 @@ func main() {
 	if _, err := os.Stat(config); err != nil {
 		fmt.Println("You should provide a configuration file")
 		os.Exit(1)
-	} else {
-		getConfig(config)
+	}
+
+	// Getting configuration from file
+	getConfig(config)
+
+	if *start {
+		if os.Getuid() != 0 {
+			fmt.Println("Execute this program as root to start server")
+			os.Exit(1)
+		}
+
+		startWebServer(Basedir)
+		os.Exit(0)
 	}
 
 	var initServer bool = false
 
+	// Check if server is running
 	if _, err := os.Stat(PIDFile); err != nil {
 		initServer = true
 		if os.Getuid() != 0 {
-			fmt.Println("Execute this program as root to start server")
+			fmt.Println("Execute this program or use option '-start' as root to start server")
 			os.Exit(1)
 		}
 	}

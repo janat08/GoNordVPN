@@ -63,8 +63,6 @@ func execOpenVPN(file string) error {
 		return err
 	}
 
-	os.Remove(os.TempDir() + "/auth.txt")
-
 	return nil
 }
 
