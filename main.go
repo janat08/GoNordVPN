@@ -543,8 +543,12 @@ func startWebServer(basedir string) {
 	exec.Command("nordvpn-server", "-database", OutDatabase, "-file", AuthFile, "-config", OutConfig, "-pid", PIDFile).Start()
 }
 
-func stopServer() {
+func killServer() {
 	http.Get("http://localhost:8084/exit")
+}
+
+func stopServer() {
+	http.Get("http://localhost:8084/stop")
 }
 
 func main() {
@@ -552,6 +556,7 @@ func main() {
 	var confStruct Config
 
 	kill := flag.Bool("kill", false, "Kill server process")
+	stop := flag.Bool("stop", false, "Stop OpenVPN service")
 	start := flag.Bool("start", false, "Start server process (requires root)")
 	create := flag.Bool("make-config", false, "Creates configuration file json")
 	useStdin := flag.Bool("stdin", false, "Use stdin to configure file")
@@ -563,8 +568,13 @@ func main() {
 
 	flag.Parse()
 
-	if *kill {
+	if *stop {
 		stopServer()
+		os.Exit(0)
+	}
+
+	if *kill {
+		killServer()
 		os.Exit(0)
 	}
 
@@ -657,42 +667,45 @@ func main() {
 		}
 	}()
 
-	fmt.Println("Creating window")
-	if err = w.Create(); err != nil {
-		panic(err)
-	}
-
 	// check the output directory with configuration files
 	if _, err = os.Stat(OutConfig); err != nil {
 		if err = os.Mkdir(OutConfig, 0777); err != nil {
 			panic(err)
 		}
 
-		fmt.Println("Downloading zip file with configurations...")
+		fmt.Println("[*] Downloading zip file with configurations...")
 		err = downloadFiles(OutConfig)
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println("[*] Downloaded")
 
-		fmt.Println("Unzipping files...")
+		fmt.Println("[*] Unzipping files...")
 		err = unzipFile(OutConfig,
 			OutConfig+string(os.PathSeparator)+"files.zip")
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println("[*] Unzipped")
 	}
 
 	if _, err = os.Stat(OutDatabase); err != nil {
-		fmt.Println("Creating database configuration...")
+		fmt.Println("[*] Creating database configuration...")
 		err = configureDatabase(OutConfig)
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println("[*] Databases created")
 	}
 
 	if initServer {
-		fmt.Println("Starting web server...")
+		fmt.Println("[*] Starting web server...")
 		go startWebServer(Basedir)
+	}
+
+	fmt.Println("[*] Creating window")
+	if err = w.Create(); err != nil {
+		panic(err)
 	}
 
 	handler.HandleSignals()
