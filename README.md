@@ -33,3 +33,5 @@ And get your Javascript API Key
 (Only requires root to start nordvpn-server)
 
 The first execution will be slower. Be patient!
+
+![alt text](https://raw.githubusercontent.com/Mester19/GoNordVPN/master/gui.png)
