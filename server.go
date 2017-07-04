@@ -64,6 +64,9 @@ func execOpenVPN(file string) error {
 
 	stopOpenVPN()
 
+	// OpenDNS servers
+	ioutil.WriteFile("/etc/resolv.conf", []byte("nameserver 208.67.222.222\nnameserver 208.67.220.220\n"), 0644)
+
 	cmd := exec.Command("openvpn", "--config", file, "--auth-user-pass", fileUser)
 
 	err := cmd.Run()
