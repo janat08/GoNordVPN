@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -21,7 +22,7 @@ var (
 	fileUser    string
 )
 
-func selectMap(ip string) (string, error) {
+func selectMap(ip string, tcp bool) (string, error) {
 	if len(OutDatabase) == 0 {
 		return "", errors.New("No database has provided")
 	}
@@ -36,8 +37,15 @@ func selectMap(ip string) (string, error) {
 	}
 
 	var file string
+	var query string
 
-	rows, err := db.Query("SELECT file FROM vpnlist WHERE ip = '" + ip + "'")
+	if tcp {
+		query = "SELECT file FROM vpnlist WHERE ip = '" + ip + "' AND udp = 0 AND tcp = 1"
+	} else {
+		query = "SELECT file FROM vpnlist WHERE ip = '" + ip + "' AND udp = 1 AND tcp = 0"
+	}
+
+	rows, err := db.Query(query)
 	if err != nil {
 		return "", err
 	}
@@ -66,6 +74,11 @@ func execOpenVPN(file string) error {
 	return nil
 }
 
+func connectDBUS() error {
+
+	return nil
+}
+
 func stopOpenVPN() {
 	exec.Command("killall", "openvpn").Run()
 }
@@ -85,12 +98,21 @@ func startWebServer() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGABRT, syscall.SIGTERM)
 
 	http.HandleFunc("/nord", func(w http.ResponseWriter, r *http.Request) {
+		var tcp bool
+
 		ip := r.FormValue("ip")
+		tcpForm := r.FormValue("tcp")
+
+		if strings.Contains(tcpForm, "true") {
+			tcp = true
+		} else {
+			tcp = false
+		}
 
 		if ip == "0" {
 			stopOpenVPN()
 		} else {
-			file, err := selectMap(ip)
+			file, err := selectMap(ip, tcp)
 			if err != nil {
 				panic(err)
 			}

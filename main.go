@@ -35,6 +35,7 @@ const (
   <head>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
+		<script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
     <title>NordVPN Servers</title>
     <style>
       #map {
@@ -47,25 +48,100 @@ const (
         padding: 0;
       }
 
-			#over_map {
+			.switch {
+				position: relative;
+				display: inline-block;
+				width: 60px;
+				height: 34px;
+			}
+
+			.switch input {display:none;}
+
+			.slider {
+				position: absolute;
+				cursor: pointer;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background-color: #ccc;
+				-webkit-transition: .4s;
+				transition: .4s;
+			}
+
+			.slider:before {
+				position: absolute;
+				content: "";
+				height: 26px;
+				width: 26px;
+				left: 4px;
+				bottom: 4px;
+				background-color: white;
+				-webkit-transition: .4s;
+				transition: .4s;
+			}
+
+			input:checked + .slider {
+				background-color: #2196F3;
+			}
+
+			input:focus + .slider {
+				box-shadow: 0 0 1px #2196F3;
+			}
+
+			input:checked + .slider:before {
+				-webkit-transform: translateX(26px);
+				-ms-transform: translateX(26px);
+				transform: translateX(26px);
+			}
+
+			.slider.round {
+				border-radius: 34px;
+			}
+
+			.slider.round:before {
+				border-radius: 50%;
+			}
+
+			.contentTCP {
+			  position: absolute;
+			  right: 0;
+				top: 100px;
+				width: auto;
+				height: auto;
+				margin: 0;
+			  background-color: transparent;
+				border: 2px solid black;
+			  padding: 10px;
+			  z-index: 99;
+			}
+
+			#logo_over_map {
 				position: absolute;
 				top: 10px;
-				left: 10px;
+				right: 10px;
 				z-index: 99;
 			}
     </style>
   </head>
   <body>
-    <div id="map">
+    <div id="map"></div>
+		<div id="logo_over_map">
+			<img src="logo.png" style="margin: 0 0 10px 10px;width:auto;height:auto;">
 		</div>
-		<div id="over_map">
-			<img src="logo.png" style="position: fixed; right: 1em; margin: 0 0 10px 10px;width:auto;height:auto;">
+		<div class="contentTCP">
+			<p>TCP</p>
+			<label class="switch">
+  			<input type="checkbox" id="checkSwitch" onclick="checkTCP()">
+		  	  <div class="slider round"></div>
+			  </input>
+			</label>
 		</div>
     <script>`
-	InitMark = `function httpGet(ip) {
+	InitMark = `function httpGet(ip, overTCP) {
       var http = new XMLHttpRequest();
 
-      http.open("GET", "http://localhost:8084/nord?ip="+ip, true);
+      http.open("GET", "http://localhost:8084/nord?ip="+ip+"&tcp="+overTCP, true);
       http.send();                                     
     }
 
@@ -97,6 +173,15 @@ const (
 
 		var marks = [""];
 		var lastMark;
+		var tcp = false;
+
+		function checkTCP() {
+  		if (document.getElementById('checkSwitch').checked) {
+		    tcp = true;
+  		} else {
+		    tcp = false;
+		  }
+		}
 
 		function addMark(map, location, title, ip) {
 			if ( !marks.includes(title) ) {
@@ -112,7 +197,7 @@ const (
 						lastMark.setIcon('http://maps.google.com/mapfiles/ms/icons/red-dot.png')
 					lastMark = marker;
 					marker.setIcon('http://maps.google.com/mapfiles/ms/icons/blue-dot.png')
-  	      httpGet(marker.ip);
+  	      httpGet(marker.ip, tcp);
     	  });
 
 				marks.push(title);
@@ -459,10 +544,6 @@ func startWebServer(basedir string) {
 }
 
 func stopServer() {
-	http.Get("http://localhost:8084/stop")
-}
-
-func killServer() {
 	http.Get("http://localhost:8084/exit")
 }
 
@@ -471,7 +552,6 @@ func main() {
 	var confStruct Config
 
 	kill := flag.Bool("kill", false, "Kill server process")
-	stop := flag.Bool("stop", false, "Stop OpenVPN process")
 	start := flag.Bool("start", false, "Start server process (requires root)")
 	create := flag.Bool("make-config", false, "Creates configuration file json")
 	useStdin := flag.Bool("stdin", false, "Use stdin to configure file")
@@ -484,11 +564,6 @@ func main() {
 	flag.Parse()
 
 	if *kill {
-		killServer()
-		os.Exit(0)
-	}
-
-	if *stop {
 		stopServer()
 		os.Exit(0)
 	}
@@ -593,20 +668,18 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Println("[*] Downloading zip file with configurations...")
+		fmt.Println("Downloading zip file with configurations...")
 		err = downloadFiles(OutConfig)
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("[*] Downloaded")
 
-		fmt.Println("[*] Unzipping files...")
+		fmt.Println("Unzipping files...")
 		err = unzipFile(OutConfig,
 			OutConfig+string(os.PathSeparator)+"files.zip")
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("[*] Unzipped")
 	}
 
 	if _, err = os.Stat(OutDatabase); err != nil {
@@ -615,7 +688,6 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Pritln("[*] Database created")
 	}
 
 	if initServer {
