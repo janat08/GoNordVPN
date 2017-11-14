@@ -34,4 +34,4 @@ And get your Javascript API Key
 
 The first execution will be slower. Be patient!
 
-![alt text](https://raw.githubusercontent.com/Mester19/GoNordVPN/master/gui.png)
+![alt text](https://raw.githubusercontent.com/themester/GoNordVPN/master/gui.png)
