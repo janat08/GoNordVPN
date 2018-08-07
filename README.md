@@ -15,3 +15,10 @@ git clone https://github.com/dgrr/GoNordVPN
 cd GoNordVPN
 sudo -E ./install.sh
 ```
+
+Usage:
+------
+
+```bash
+gonordvpn -u your@email.com
+```
