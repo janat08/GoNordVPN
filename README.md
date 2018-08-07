@@ -20,5 +20,6 @@ Usage:
 ------
 
 ```bash
-gonordvpn -u your@email.com
+gonordvpn -u your@email.com -fetch &
+xdg-open http://localhost:9114
 ```
