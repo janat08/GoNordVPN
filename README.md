@@ -2,36 +2,16 @@
 GUI NordVPN client created in Golang for Linux.
 (Mainly for Linux)
 
-Sponsored by Initial-D soundtracks.
+Created by lazy computer science student
 
-Created by Mester. Lazy computer engineering student
+![alt text](https://raw.githubusercontent.com/dgrr/GoNordVPN/master/gui.png)
 
 Installation:
 -------------
-1.- Install Golang.
 
-If you're using Arch Linux execute:
-
-`sudo pacman -S go`
-
-Else install from `golang.org/dl`
-
-2.- Get your google maps API key.
-
-You should go to: `https://console.developers.google.com`
-
-And get your Javascript API Key
-
-3.- Configure and compile: 
-
-`sudo -E ./install.sh`
-
-4.- Execute:
-
-`sudo nordvpn-client -start && nordvpn-client`
-
-(Only requires root to start nordvpn-server)
-
-The first execution will be slower. Be patient!
-
-![alt text](https://raw.githubusercontent.com/themester/GoNordVPN/master/gui.png)
+```bash
+cd /tmp/
+git clone https://github.com/dgrr/GoNordVPN
+cd GoNordVPN
+sudo -E ./install.sh
+```
