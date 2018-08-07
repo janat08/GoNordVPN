@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/howeyc/gopass"
+	"github.com/mitchellh/go-ps"
 )
 
 func debug(str string) {
@@ -17,6 +18,7 @@ func debug(str string) {
 }
 
 var (
+	kill        = flag.Bool("kill", false, "Stops another gonordvpn servers")
 	fetch       = flag.Bool("fetch", false, "Fetch VPN server list and OVPN files")
 	verbose     = flag.Bool("v", false, "Verbose mode")
 	certFile    = flag.String("cert", "", "SSL Certificate")
@@ -30,7 +32,7 @@ var (
 	disableRoot = flag.Bool("no-root", false, "Disables root checking")
 	username    = flag.String("u", "", "NordVPN username")
 
-	config = VPNS{
+	config = Config{
 		VPNList: make([]VPN, 0),
 	}
 )
@@ -44,6 +46,11 @@ func init() {
 func main() {
 	if !*disableRoot && os.Getuid() != 0 {
 		log.Fatalln("Must be executed as root because of openvpn")
+	}
+	if *kill {
+		stopOpenVPN()
+		stopGoNordVPN()
+		return
 	}
 	if *logfile != "" {
 		file, err := os.Create(*logfile)
@@ -80,4 +87,27 @@ func main() {
 	}
 	log.Println(startServer())
 	stopOpenVPN()
+}
+
+func stopGoNordVPN() {
+	pid := os.Getpid()
+	proc, err := ps.FindProcess(pid)
+	if err != nil {
+		panic(err)
+	}
+
+	procs, err := ps.Processes()
+	if err != nil {
+		panic(err)
+	}
+	for _, p := range procs {
+		if p.Pid() != pid && p.Executable() == proc.Executable() {
+			newp, err := os.FindProcess(p.Pid())
+			if err != nil {
+				panic(err)
+			}
+			newp.Signal(os.Interrupt)
+			return
+		}
+	}
 }

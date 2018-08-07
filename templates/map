@@ -11,10 +11,11 @@
           height: 100%;
           margin: 0;
       }
-      .olControlTextButtonPanel.vpanel {
-        top: 8px;
-        right: 8px;
-        left: auto;
+      .olControlTextButtonPanel.hpanel { 
+        top: auto;
+        bottom: 40px;
+        left: 30px;
+        right: auto;
       }
 
       .button1ItemInactive:after,
@@ -62,6 +63,7 @@
             }
             last = mark;
             mark.marker.icon.setUrl("/red-dot.png");
+            toastr.success(this.responseText)
           }
         };
         http.open("GET", "http://localhost:9114/"+mark.country+"/"+proto);
@@ -131,27 +133,25 @@
 
         var b1 = new OpenLayers.Control.Button({
           trigger: function() {
-            toastr.success('Using UDP')
+            toastr.success('Changed to UDP')
             proto = "udp";
           },
           displayClass: "button1"
         });
         var b2 = new OpenLayers.Control.Button({
           trigger: function() {
-            toastr.success('Using TCP', '')
+            toastr.success('Changed to TCP')
             proto = "tcp";
           },
           displayClass: "button2"
         });
-        var vpanel = new OpenLayers.Control.TextButtonPanel({
-          vertical: true,
-          additionalClass: "vpanel"
+        var hpanel = new OpenLayers.Control.TextButtonPanel({
+          additionalClass: "hpanel"
         });
-        vpanel.addControls([b1,b2]);
-        map.addControl(vpanel);
-        toastr.options.timeOut = 2;
-        toastr.options.extendedTimeOut = 2;
-        toastr.options.progressBar = true;
+        hpanel.addControls([
+          b1, b2
+        ]);
+        map.addControl(hpanel);
       }
     </script>
   </head>

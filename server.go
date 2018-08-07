@@ -11,6 +11,9 @@ import (
 	"github.com/thehowl/fasthttprouter"
 )
 
+// currentServer is hostname of current VPN connection
+var currentServer string
+
 var templates = func() *template.Template {
 	t, err := template.ParseGlob(*templateDir)
 	if err != nil {
@@ -68,6 +71,6 @@ func connHandler(ctx *fasthttp.RequestCtx) {
 		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
 	} else {
 		ctx.SetStatusCode(fasthttp.StatusOK)
-		fmt.Fprintf(ctx, "Connected to %s", country)
+		fmt.Fprintf(ctx, "Connected to %s", currentServer)
 	}
 }

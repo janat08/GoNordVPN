@@ -45,10 +45,10 @@ type VPN struct {
 	} `json:"features"`
 }
 
-type VPNS struct {
-	Username string
-	Password string
-	VPNList  []VPN
+type Config struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	VPNList  []VPN  `json:"-"`
 }
 
 func fetchVPNList() error {
