@@ -1,170 +1,73 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
-	"flag"
-	_ "github.com/mattn/go-sqlite3"
-	"io/ioutil"
-	"net/http"
+	"fmt"
+	"html/template"
+	"log"
 	"os"
-	"os/exec"
 	"os/signal"
-	"strconv"
-	"strings"
-	"syscall"
+
+	"github.com/erikdubbelboer/fasthttp"
+	"github.com/thehowl/fasthttprouter"
 )
 
-var (
-	PIDFile     string
-	OutConfig   string
-	OutDatabase string
-	fileUser    string
-)
-
-func selectMap(ip string, tcp bool) (string, error) {
-	if len(OutDatabase) == 0 {
-		return "", errors.New("No database has provided")
-	}
-	db, err := sql.Open("sqlite3", OutDatabase)
+var templates = func() *template.Template {
+	t, err := template.ParseGlob(*templateDir)
 	if err != nil {
-		return "", err
+		panic(err)
 	}
-	defer db.Close()
+	return t
+}()
 
-	if err = db.Ping(); err != nil {
-		return "", err
+func startServer() error {
+	debug("starting server")
+	fs := fasthttp.FS{
+		Root:       *httpDir,
+		IndexNames: []string{"index.html"},
+		Compress:   true,
 	}
-
-	var file string
-	var query string
-
-	if tcp {
-		query = "SELECT file FROM vpnlist WHERE ip = '" + ip + "' AND udp = 0 AND tcp = 1"
-	} else {
-		query = "SELECT file FROM vpnlist WHERE ip = '" + ip + "' AND udp = 1 AND tcp = 0"
+	router := fasthttprouter.New()
+	router.GET("/", rootHandler)
+	router.GET("/:country/:proto", connHandler)
+	router.NotFound = fs.NewRequestHandler()
+	// TODO: Implement TLS
+	server := fasthttp.Server{
+		Handler:          router.Handler,
+		LogAllErrors:     false,
+		Name:             "GoNordVPN 0.1",
+		DisableKeepalive: true,
 	}
-
-	rows, err := db.Query(query)
-	if err != nil {
-		return "", err
+	go server.ListenAndServe(":9114")
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	select {
+	case <-ch:
 	}
-
-	for rows.Next() {
-		rows.Scan(&file)
-	}
-
-	return file, nil
+	log.Println("Shutting down")
+	return server.Shutdown()
 }
 
-func execOpenVPN(file string) error {
-	if len(fileUser) == 0 {
-		return errors.New("You should enter file with user and password")
-	}
-
-	stopOpenVPN()
-
-	// OpenDNS servers
-	ioutil.WriteFile("/etc/resolv.conf", []byte("nameserver 208.67.222.222\nnameserver 208.67.220.220\n"), 0644)
-
-	cmd := exec.Command("openvpn", "--config", file, "--auth-user-pass", fileUser)
-
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	return nil
+func rootHandler(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("text/html")
+	templates.ExecuteTemplate(ctx, "map", config.VPNList)
 }
 
-func connectDBUS() error {
-
-	return nil
-}
-
-func stopOpenVPN() {
-	exec.Command("killall", "openvpn").Run()
-}
-
-func startWebServer() {
-	if len(OutConfig) == 0 {
+func connHandler(ctx *fasthttp.RequestCtx) {
+	country := ctx.UserValue("country")
+	if country == nil {
+		ctx.Error("bad country", fasthttp.StatusBadRequest)
 		return
 	}
-
-	if len(PIDFile) == 0 {
-		PIDFile = os.TempDir() + string(os.PathSeparator) + "nordvpn.pid"
+	proto := ctx.UserValue("proto")
+	if proto != "tcp" || proto != "udp" {
+		proto = "udp"
 	}
-
-	ioutil.WriteFile(PIDFile, []byte(strconv.Itoa(os.Getpid())), 0666)
-
-	signals := make(chan os.Signal)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGABRT, syscall.SIGTERM)
-
-	http.HandleFunc("/nord", func(w http.ResponseWriter, r *http.Request) {
-		var tcp bool
-
-		ip := r.FormValue("ip")
-		tcpForm := r.FormValue("tcp")
-
-		if strings.Contains(tcpForm, "true") {
-			tcp = true
-		} else {
-			tcp = false
-		}
-
-		if ip == "0" {
-			stopOpenVPN()
-		} else {
-			file, err := selectMap(ip, tcp)
-			if err != nil {
-				panic(err)
-			}
-
-			err = execOpenVPN(OutConfig + string(os.PathSeparator) + file)
-			if err != nil {
-				panic(err)
-			}
-		}
-	})
-
-	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {
-		stopOpenVPN()
-	})
-
-	http.HandleFunc("/exit", func(w http.ResponseWriter, r *http.Request) {
-		stopOpenVPN()
-
-		os.Remove(PIDFile)
-		os.Remove(fileUser)
-		os.Exit(0)
-	})
-
-	go http.ListenAndServe("127.0.0.1:8084", nil)
-
-	<-signals
-	os.Remove(PIDFile)
-	os.Remove(fileUser)
-
 	stopOpenVPN()
-}
-
-func main() {
-	if os.Getuid() != 0 {
-		println("You should execute this program has root")
-		os.Exit(1)
+	err := startOpenVPN(country.(string), proto.(string))
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+	} else {
+		ctx.SetStatusCode(fasthttp.StatusOK)
+		fmt.Fprintf(ctx, "Connected to %s", country)
 	}
-
-	flag.StringVar(&OutDatabase, "database", "", "Database location")
-	flag.StringVar(&fileUser, "file", "", "File with user and password")
-	flag.StringVar(&OutConfig, "config", "", "OpenVPN directory with configuration files")
-	flag.StringVar(&PIDFile, "pid", "", "PID file for server")
-
-	flag.Parse()
-
-	if _, err := os.Stat(PIDFile); err == nil {
-		println("Server is already running")
-		os.Exit(1)
-	}
-
-	startWebServer()
 }
