@@ -28,7 +28,7 @@ var (
 	dataFile    = flag.String("data", "./servers.json", "VPN Servers data")
 	templateDir = flag.String("t", "./templates/*", "Templates files dir")
 	httpDir     = flag.String("html-dir", "./html", "HTML file directory")
-	dnsServers  = flag.String("dns", "8.8.8.8,8.8.4.4", "DNS servers separated by commas")
+	dnsServers  = flag.String("dns", "9.9.9.9,8.8.8.8", "DNS servers separated by commas")
 	disableRoot = flag.Bool("no-root", false, "Disables root checking")
 	username    = flag.String("u", "", "NordVPN username")
 

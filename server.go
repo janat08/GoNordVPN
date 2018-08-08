@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/erikdubbelboer/fasthttp"
 	"github.com/thehowl/fasthttprouter"
@@ -44,6 +45,7 @@ func startServer() error {
 		DisableKeepalive: true,
 	}
 	go server.ListenAndServe(":9114")
+	go updateListEvery(time.Minute * 5)
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
 	select {

@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/erikdubbelboer/fasthttp"
 )
@@ -227,4 +228,11 @@ func checkFiles() bool {
 		return true
 	}
 	return len(files) == 0
+}
+
+func updateListEvery(t time.Duration) {
+	for {
+		time.Sleep(t)
+		fetchVPNList()
+	}
 }
