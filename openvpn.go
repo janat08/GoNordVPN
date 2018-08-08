@@ -39,7 +39,7 @@ func startOpenVPN(country, proto string) error {
 			vpn = vpn2
 		}
 	}
-	currentServer = vpn.Domain
+	currentServer = &vpn
 	conFile := path.Join(*ovpnDir, fmt.Sprintf("%s.%s%d.ovpn", vpn.Domain, proto, port))
 
 	authFile := randFile()

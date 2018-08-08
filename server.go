@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -11,8 +12,8 @@ import (
 	"github.com/thehowl/fasthttprouter"
 )
 
-// currentServer is hostname of current VPN connection
-var currentServer string
+// currentServer is the current VPN connection
+var currentServer *VPN
 
 var templates = func() *template.Template {
 	t, err := template.ParseGlob(*templateDir)
@@ -31,7 +32,9 @@ func startServer() error {
 	}
 	router := fasthttprouter.New()
 	router.GET("/", rootHandler)
-	router.GET("/:country/:proto", connHandler)
+	router.GET("/disconnect", disconnectHandler)
+	router.GET("/where/am/i/connected", statusHandler)
+	router.GET("/connecto/:country/:proto", connHandler)
 	router.NotFound = fs.NewRequestHandler()
 	// TODO: Implement TLS
 	server := fasthttp.Server{
@@ -71,6 +74,20 @@ func connHandler(ctx *fasthttp.RequestCtx) {
 		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
 	} else {
 		ctx.SetStatusCode(fasthttp.StatusOK)
-		fmt.Fprintf(ctx, "Connected to %s", currentServer)
+		fmt.Fprintf(ctx, "Connected to %s", currentServer.Domain)
 	}
+}
+
+func statusHandler(ctx *fasthttp.RequestCtx) {
+	if currentServer == nil {
+		ctx.SetStatusCode(fasthttp.StatusNoContent)
+	} else {
+		io.WriteString(ctx, currentServer.Country)
+	}
+}
+
+func disconnectHandler(ctx *fasthttp.RequestCtx) {
+	currentServer = nil
+	stopOpenVPN()
+	io.WriteString(ctx, "Disconnected")
 }
