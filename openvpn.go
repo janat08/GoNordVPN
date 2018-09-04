@@ -10,11 +10,20 @@ import (
 	"github.com/valyala/fastrand"
 )
 
+func doModprobe() error {
+	return exec.Command("modprobe", "tun").Run()
+}
+
 func stopOpenVPN() error {
 	return exec.Command("pkill", "-2", "openvpn").Run()
 }
 
 func startOpenVPN(country, proto string) error {
+	err := doModprobe()
+	if err != nil {
+		return err
+	}
+
 	file, err := os.Create("/etc/resolv.conf")
 	if err != nil {
 		return err
