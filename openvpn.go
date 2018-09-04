@@ -60,9 +60,12 @@ func startOpenVPN(country, proto string) error {
 	fmt.Fprintf(file, "%s\n", config.Password)
 	file.Close()
 	debug(
-		fmt.Sprintf("executing openvpn --config %s --auth-user-pass %s", conFile, authFile),
+		fmt.Sprintf("executing openvpn --config %s --auth-user-pass %s --auth-nocache", conFile, authFile),
 	)
-	err = exec.Command("openvpn", "--config", conFile, "--auth-user-pass", authFile, "--daemon").Run()
+	cmd := exec.Command("openvpn", "--config", conFile, "--auth-user-pass", authFile, "--auth-nocache", "--daemon")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
 	os.Remove(authFile)
 	return err
 }
