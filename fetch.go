@@ -14,8 +14,9 @@ import (
 )
 
 type VPN struct {
-	ID             int           `json:"id"`
-	IP             string        `json:"ip_address"`
+	ID             int    `json:"id"`
+	IP             string `json:"ip_address"`
+	ping           time.Duration
 	SearchKeywords []interface{} `json:"search_keywords"`
 	Categories     []struct {
 		Name string `json:"name"`
@@ -99,6 +100,10 @@ func fetchLocal() error {
 }
 
 func addNewVPNS(vpns []VPN) {
+	if !*doNotSortByPing {
+		vpns = sortByPing(vpns)
+	}
+
 vpnLabel:
 	for _, vpn := range vpns {
 		for _, vpn2 := range config.VPNList {
@@ -107,9 +112,6 @@ vpnLabel:
 			}
 		}
 		config.VPNList = append(config.VPNList, vpn)
-	}
-	if !*doNotSortByPing {
-		go sortByPing(config.VPNList)
 	}
 }
 
