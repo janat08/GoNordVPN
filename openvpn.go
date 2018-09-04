@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/valyala/fastrand"
 )
@@ -41,10 +42,10 @@ func startOpenVPN(country, proto string) error {
 	}
 
 	var vpn = VPN{
-		Load: 1 << 31,
+		ping: time.Duration(1 << 31),
 	}
 	for _, vpn2 := range config.VPNList {
-		if vpn2.Country == country && vpn2.Load < vpn.Load {
+		if vpn2.Country == country && vpn2.ping < vpn.ping {
 			vpn = vpn2
 		}
 	}
