@@ -70,16 +70,10 @@ func fetchVPNList() error {
 	if err != nil {
 		return err
 	}
-vpnLabel:
-	for _, vpn := range vpns {
-		for _, vpn2 := range config.VPNList {
-			if vpn.Domain == vpn2.Domain || vpn.Country == vpn2.Country {
-				continue vpnLabel
-			}
-		}
-		config.VPNList = append(config.VPNList, vpn)
-	}
+
+	addNewVPNS(vpns)
 	vpns = nil
+
 	file, err := os.Create(*dataFile)
 	if err == nil {
 		res.BodyWriteTo(file)
@@ -99,6 +93,12 @@ func fetchLocal() error {
 	if err != nil {
 		return err
 	}
+	addNewVPNS(vpns)
+
+	return nil
+}
+
+func addNewVPNS(vpns []VPN) {
 vpnLabel:
 	for _, vpn := range vpns {
 		for _, vpn2 := range config.VPNList {
@@ -108,7 +108,9 @@ vpnLabel:
 		}
 		config.VPNList = append(config.VPNList, vpn)
 	}
-	return nil
+	if !*doNotSortByPing {
+		go sortByPing(config.VPNList)
+	}
 }
 
 var client = fasthttp.Client{

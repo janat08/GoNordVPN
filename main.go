@@ -18,19 +18,21 @@ func debug(str string) {
 }
 
 var (
-	kill        = flag.Bool("kill", false, "Stops another gonordvpn servers")
-	fetch       = flag.Bool("fetch", false, "Fetch VPN server list and OVPN files")
-	verbose     = flag.Bool("v", false, "Verbose mode")
-	certFile    = flag.String("cert", "", "SSL Certificate")
-	keyFile     = flag.String("key", "", "SSL private key for certificate")
-	logfile     = flag.String("o", "", "Log file (default stdout)")
-	ovpnDir     = flag.String("ovpn-dir", "./ovpn-files/", "OVPN output file directory")
-	dataFile    = flag.String("data", "./servers.json", "VPN Servers data")
-	templateDir = flag.String("t", "./templates/*", "Templates files dir")
-	httpDir     = flag.String("html-dir", "./html", "HTML file directory")
-	dnsServers  = flag.String("dns", "9.9.9.9,8.8.8.8", "DNS servers separated by commas")
-	disableRoot = flag.Bool("no-root", false, "Disables root checking")
-	username    = flag.String("u", "", "NordVPN username")
+	kill            = flag.Bool("kill", false, "Stops another gonordvpn servers")
+	fetch           = flag.Bool("fetch", false, "Fetch VPN server list and OVPN files")
+	verbose         = flag.Bool("v", false, "Verbose mode")
+	certFile        = flag.String("cert", "", "SSL Certificate")
+	keyFile         = flag.String("key", "", "SSL private key for certificate")
+	logfile         = flag.String("o", "", "Log file (default stdout)")
+	ovpnDir         = flag.String("ovpn-dir", "./ovpn-files/", "OVPN output file directory")
+	dataFile        = flag.String("data", "./servers.json", "VPN Servers data")
+	templateDir     = flag.String("t", "./templates/*", "Templates files dir")
+	httpDir         = flag.String("html-dir", "./html", "HTML file directory")
+	dnsServers      = flag.String("dns", "9.9.9.9,8.8.8.8", "DNS servers separated by commas")
+	disableRoot     = flag.Bool("no-root", false, "Disables root checking")
+	username        = flag.String("u", "", "NordVPN username")
+	authCred        = flag.String("auth", "", "Map access credentials (user:pass)") // TODO
+	doNotSortByPing = flag.Bool("no-ping-sort", false, "Disable sort by ping")
 
 	config = Config{
 		VPNList: make([]VPN, 0),
