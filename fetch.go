@@ -51,6 +51,7 @@ type Config struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	VPNList  []VPN  `json:"-"`
+	showList []VPN  `json:"-"`
 }
 
 func fetchVPNList() error {
@@ -104,14 +105,16 @@ func addNewVPNS(vpns []VPN) {
 		vpns = sortByPing(vpns)
 	}
 
+	config.showList = config.showList[:0]
+	config.VPNList = append(config.VPNList[:0], vpns...)
 vpnLabel:
 	for _, vpn := range vpns {
-		for _, vpn2 := range config.VPNList {
-			if vpn.Domain == vpn2.Domain || vpn.Country == vpn2.Country {
+		for _, vpn2 := range config.showList {
+			if vpn.Country == vpn2.Country {
 				continue vpnLabel
 			}
 		}
-		config.VPNList = append(config.VPNList, vpn)
+		config.showList = append(config.showList, vpn)
 	}
 }
 

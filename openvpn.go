@@ -16,7 +16,7 @@ func doModprobe() error {
 }
 
 func stopOpenVPN() error {
-	return exec.Command("pkill", "-2", "openvpn").Run()
+	return exec.Command("pkill", "-9", "openvpn").Run()
 }
 
 func startOpenVPN(country, proto string) error {
@@ -63,11 +63,19 @@ func startOpenVPN(country, proto string) error {
 	debug(
 		fmt.Sprintf("executing openvpn --config %s --auth-user-pass %s --auth-nocache", conFile, authFile),
 	)
-	cmd := exec.Command("openvpn", "--config", conFile, "--auth-user-pass", authFile, "--auth-nocache", "--daemon")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
-	os.Remove(authFile)
+	go func() {
+		for {
+			cmd := exec.Command("openvpn", "--config", conFile, "--auth-user-pass", authFile, "--auth-nocache")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Start()
+			time.Sleep(time.Second * 5)
+			os.Remove(authFile)
+			if err := cmd.Wait(); err != nil {
+				break
+			}
+		}
+	}()
 	return err
 }
 

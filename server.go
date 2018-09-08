@@ -59,7 +59,7 @@ func startServer() error {
 
 func rootHandler(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("text/html")
-	templates.ExecuteTemplate(ctx, "map", config.VPNList)
+	templates.ExecuteTemplate(ctx, "map", config.showList)
 }
 
 func connHandler(ctx *fasthttp.RequestCtx) {
