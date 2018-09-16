@@ -1,6 +1,5 @@
 #!/bin/bash
 
-go get ./...
 go build -o GoNordVPN
 currentPath=`pwd`
 dirPath=`basename $currentPath`

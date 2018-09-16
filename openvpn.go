@@ -69,12 +69,11 @@ func startOpenVPN(country, proto string) error {
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 			cmd.Start()
-			time.Sleep(time.Second * 5)
-			os.Remove(authFile)
 			if err := cmd.Wait(); err != nil {
 				break
 			}
 		}
+		os.Remove(authFile)
 	}()
 	return err
 }
