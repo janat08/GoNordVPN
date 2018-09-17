@@ -8,6 +8,20 @@ Created by lazy computer science student
 Installation:
 -------------
 
+If you don't have Go command:
+
+1. Download GoNordVPN from [latest releases](https://github.com/dgrr/GoNordVPN/releases/)
+
+2. Execute:
+
+```bash
+unzip GoNordVPN.zip
+cd GoNordVPN/
+sudo -E ./install.sh
+```
+
+If you have Go command:
+
 ```bash
 cd /tmp/
 git clone https://github.com/dgrr/GoNordVPN
