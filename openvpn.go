@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -16,7 +18,46 @@ func doModprobe() error {
 }
 
 func stopOpenVPN() error {
-	return exec.Command("pkill", "-9", "openvpn").Run()
+	err := exec.Command("pkill", "-9", "openvpn").Run()
+	if err == nil {
+		err = restoreResolvConf()
+	}
+	return err
+}
+
+func backupResolvConf() error {
+	bkp, err := os.Create("/etc/.resolv.conf")
+	if err != nil {
+		return err
+	}
+	defer bkp.Close()
+
+	rev, err := os.Open("/etc/resolv.conf")
+	if err != nil {
+		return err
+	}
+	defer rev.Close()
+
+	_, err = io.Copy(bkp, rev)
+	return err
+}
+
+func restoreResolvConf() error {
+	bkp, err := os.Open("/etc/.resolv.conf")
+	if err != nil {
+
+	}
+	defer os.Remove("/etc/.resolv.conf")
+	defer bkp.Close()
+
+	rev, err := os.Create("/etc/resolv.conf")
+	if err != nil {
+		return err
+	}
+	defer rev.Close()
+
+	_, err = io.Copy(rev, bkp)
+	return err
 }
 
 func startOpenVPN(country, proto string) error {
@@ -24,15 +65,6 @@ func startOpenVPN(country, proto string) error {
 	if err != nil {
 		return err
 	}
-
-	file, err := os.Create("/etc/resolv.conf")
-	if err != nil {
-		return err
-	}
-	for _, dns := range strings.Split(*dnsServers, ",") {
-		fmt.Fprintf(file, "nameserver %s\n", dns)
-	}
-	file.Close()
 
 	port := 0
 	if proto == "tcp" {
@@ -53,7 +85,7 @@ func startOpenVPN(country, proto string) error {
 	conFile := path.Join(*ovpnDir, fmt.Sprintf("%s.%s%d.ovpn", vpn.Domain, proto, port))
 
 	authFile := randFile()
-	file, err = os.OpenFile(authFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0700)
+	file, err := os.OpenFile(authFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0700)
 	if err != nil {
 		return err
 	}
@@ -64,6 +96,22 @@ func startOpenVPN(country, proto string) error {
 		fmt.Sprintf("executing openvpn --config %s --auth-user-pass %s --auth-nocache", conFile, authFile),
 	)
 	go func() {
+		// backing up resolv.conf
+		if err = backupResolvConf(); err != nil {
+			log.Println(err)
+			return
+		}
+
+		file, err := os.Create("/etc/resolv.conf")
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		for _, dns := range strings.Split(*dnsServers, ",") {
+			fmt.Fprintf(file, "nameserver %s\n", dns)
+		}
+		file.Close()
+
 		for {
 			cmd := exec.Command("openvpn", "--config", conFile, "--auth-user-pass", authFile, "--auth-nocache")
 			cmd.Stdout = os.Stdout
