@@ -68,12 +68,12 @@ func connHandler(ctx *fasthttp.RequestCtx) {
 		ctx.Error("bad country", fasthttp.StatusBadRequest)
 		return
 	}
-	proto := ctx.UserValue("proto")
-	if proto != "tcp" || proto != "udp" {
+	proto := ctx.UserValue("proto").(string)
+	if proto != "tcp" && proto != "udp" {
 		proto = "udp"
 	}
 	stopOpenVPN()
-	err := startOpenVPN(country.(string), proto.(string))
+	err := startOpenVPN(country.(string), proto)
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
 	} else {
