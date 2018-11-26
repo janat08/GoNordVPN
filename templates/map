@@ -81,15 +81,21 @@
         mark.marker.icon.setUrl("/red-dot.png");
       }
 
+      var disconnect = false;
       function connect(mark) {
         url = "http://localhost:9114/connecto/"+mark.country+"/"+proto
         if (mark == last){
           url = "http://localhost:9114/disconnect"
+          disconnect = true
         }
         var http = new XMLHttpRequest();
         http.onreadystatechange = function() {
           if (this.readyState == 4 && this.status == 200) {
             changeIcon(mark)
+            if(disconnect){
+              last = null
+              disconnect = false
+            }
             toastr.success(this.responseText)
           }
         };
