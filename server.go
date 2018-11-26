@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/erikdubbelboer/fasthttp"
-	"github.com/thehowl/fasthttprouter"
+	"github.com/valyala/fasthttp"
+	"github.com/buaazp/fasthttprouter"
 )
 
 // currentServer is the current VPN connection
