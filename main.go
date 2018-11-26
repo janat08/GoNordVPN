@@ -1,15 +1,19 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path"
 
+	"github.com/BurntSushi/toml"
 	"github.com/howeyc/gopass"
 	"github.com/mitchellh/go-ps"
 )
+
+var InstallPath = "./"
 
 func debug(str string) {
 	if *verbose {
@@ -24,15 +28,16 @@ var (
 	certFile        = flag.String("cert", "", "SSL Certificate")
 	keyFile         = flag.String("key", "", "SSL private key for certificate")
 	logfile         = flag.String("o", "", "Log file (default stdout)")
-	ovpnDir         = flag.String("ovpn-dir", "./ovpn-files/", "OVPN output file directory")
-	dataFile        = flag.String("data", "./servers.json", "VPN Servers data")
-	templateDir     = flag.String("t", "./templates/*", "Templates files dir")
-	httpDir         = flag.String("html-dir", "./html", "HTML file directory")
+	ovpnDir         = flag.String("ovpn-dir", InstallPath+"ovpn-files/", "OVPN output file directory")
+	dataFile        = flag.String("data", InstallPath+"servers.json", "VPN Servers data")
+	templateDir     = flag.String("t", InstallPath+"templates/*", "Templates files dir")
+	httpDir         = flag.String("html-dir", InstallPath+"html", "HTML file directory")
 	dnsServers      = flag.String("dns", "9.9.9.9,8.8.8.8", "DNS servers separated by commas")
 	disableRoot     = flag.Bool("no-root", false, "Disables root checking")
 	username        = flag.String("u", "", "NordVPN username")
 	authCred        = flag.String("auth", "", "Map access credentials (user:pass)") // TODO
 	doNotSortByPing = flag.Bool("no-ping-sort", false, "Disable sort by ping")
+	configFile      = flag.String("c", InstallPath+"nordvpn.conf", "Configuration file")
 
 	config = Config{
 		VPNList: make([]VPN, 0),
@@ -41,11 +46,12 @@ var (
 
 func init() {
 	flag.Parse()
-	os.MkdirAll(path.Dir(*ovpnDir), 700)
+	os.MkdirAll(*ovpnDir, 700)
 	os.MkdirAll(path.Dir(*dataFile), 700)
 }
 
 func main() {
+	var err error
 	if !*disableRoot && os.Getuid() != 0 {
 		log.Fatalln("Must be executed as root because of openvpn")
 	}
@@ -54,31 +60,48 @@ func main() {
 		stopGoNordVPN()
 		return
 	}
-	if *logfile != "" {
-		file, err := os.Create(*logfile)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		defer file.Close()
-		log.SetOutput(file)
-	}
-	if (*certFile != "" && *keyFile == "") ||
-		(*certFile == "" && *keyFile != "") {
-		log.Fatalln("Certfile and Keyfile must be provided")
+	if templates == nil {
+		log.Fatalf("Cannot load the templates dir %s\n", *templateDir)
 	}
 
-	if *username == "" {
-		log.Fatalln("username must be specified with -u parameter")
+	if *logfile != "" {
+		var file *os.File
+		file, err = os.Create(*logfile)
+		if err == nil {
+			defer file.Close()
+			log.SetOutput(file)
+		}
 	}
-	fmt.Printf("%s password: ", *username)
-	pass, err := gopass.GetPasswd()
+
+	if err == nil &&
+		((*certFile != "" && *keyFile == "") ||
+			(*certFile == "" && *keyFile != "")) {
+		err = errors.New("Certfile and Keyfile must be provided")
+	}
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	config.Username = *username
-	config.Password = string(pass)
-	pass = nil
+	if _, err = os.Stat(*configFile); err == nil {
+		_, err = toml.DecodeFile(*configFile, &config)
+	}
+	if err != nil {
+		log.Fatalf("error reading config file: %s\n", err)
+	}
+
+	if len(config.Username) == 0 && len(*username) == 0 {
+		log.Fatalln("username must be specified with -u parameter")
+	}
+
+	if len(config.Password) == 0 {
+		fmt.Printf("%s password: ", *username)
+		pass, err := gopass.GetPasswd()
+		if err != nil {
+			log.Fatalln(err)
+		}
+		config.Password = string(pass)
+		pass = nil
+	}
 
 	if !*fetch {
 		*fetch = checkFiles()

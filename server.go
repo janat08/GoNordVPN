@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/valyala/fasthttp"
 	"github.com/buaazp/fasthttprouter"
+	"github.com/valyala/fasthttp"
 )
 
 // currentServer is the current VPN connection
@@ -19,7 +19,7 @@ var currentServer *VPN
 var templates = func() *template.Template {
 	t, err := template.ParseGlob(*templateDir)
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	return t
 }()

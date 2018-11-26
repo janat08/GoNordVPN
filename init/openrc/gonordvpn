@@ -1,0 +1,18 @@
+#!/sbin/openrc-run
+
+command="/usr/bin/gonordvpn"
+command_args=""
+command_stop_args="-kill"
+command_background=true
+pidfile="/run/gonordvpn.pid"
+
+rc_need="loopback"
+
+depend() {
+  need localmount
+  need net
+}
+
+stop_pre() {
+  ${command} ${command_stop_args}
+}

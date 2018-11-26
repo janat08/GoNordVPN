@@ -17,7 +17,10 @@ If you don't have Go command:
 ```bash
 unzip GoNordVPN.zip
 cd GoNordVPN/
-sudo -E ./install.sh
+go get ./...
+make && sudo make install
+sudo vim /usr/share/GoNordVPN/nordvpn.conf # Edit your config with your credentials.
+rc-service gonordvpn restart
 ```
 
 If you have Go command:
@@ -26,15 +29,24 @@ If you have Go command:
 cd /tmp/
 git clone https://github.com/dgrr/GoNordVPN
 cd GoNordVPN
-sudo -E ./install.sh
+go get ./...
+make && sudo make install
+sudo vim /usr/share/GoNordVPN/nordvpn.conf # Edit your config with your credentials.
+rc-service gonordvpn restart
 ```
 
 Usage:
 ------
 
+Cmd usage:
 ```bash
 gonordvpn -u your@email.com -fetch
 ```
+OpenRC usage:
+```bash
+rc-service gonordvpn start
+```
+
 ```bash
 xdg-open http://localhost:9114
 ```

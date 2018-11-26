@@ -48,8 +48,8 @@ type VPN struct {
 }
 
 type Config struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `json:"-" toml:"user"`
+	Password string `json:"-" toml:"pass"`
 	VPNList  []VPN  `json:"-"`
 	showList []VPN  `json:"-"`
 }
