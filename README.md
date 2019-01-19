@@ -1,5 +1,5 @@
 # GoNordVPN
-GUI NordVPN client in Golang for Linux.
+GUI NordVPN client in Golang for Linux, like [nordpy](https://github.com/morpheusthewhite/NordPy) (worse looking, easier to install).
 
 Created by lazy computer science student
 
